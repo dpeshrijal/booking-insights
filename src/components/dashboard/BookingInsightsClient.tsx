@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Booking, AuditFinding, FindingType } from "@/types";
+import { Booking, AuditFinding, DuplicateFinding, FindingType } from "@/types";
 import { columns } from "@/components/dashboard/columns";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import type { DashboardStats } from "@/lib/booking-insights";
 import { detectAnomalyFindings } from "@/features/anomalies/detection";
+import { detectDuplicateFindings } from "@/features/duplicates/detection";
 
 interface BookingInsightsClientProps {
   bookings: Booking[];
@@ -17,7 +18,7 @@ interface BookingInsightsClientProps {
 }
 
 type AuditState = "idle" | "running" | "completed" | "error";
-type MainTab = "ledger" | "anomalies";
+type MainTab = "ledger" | "anomalies" | "duplicates";
 
 const TYPE_SECTIONS: Array<{ type: FindingType; label: string }> = [
   { type: "TYPO_NEAR_DUPLICATE", label: "Typos / Near-Duplicates" },
@@ -39,6 +40,7 @@ export function BookingInsightsClient({
 }: BookingInsightsClientProps) {
   const [auditState, setAuditState] = useState<AuditState>("idle");
   const [findings, setFindings] = useState<AuditFinding[]>([]);
+  const [duplicateFindings, setDuplicateFindings] = useState<DuplicateFinding[]>([]);
   const [mainTab, setMainTab] = useState<MainTab>("ledger");
   const findingsByType = TYPE_SECTIONS.map((section) => ({
     ...section,
@@ -97,6 +99,49 @@ export function BookingInsightsClient({
     }
   }
 
+  async function runAllChecks() {
+    try {
+      setAuditState("running");
+      const detectedAnomalies = detectAnomalyFindings(bookings);
+      const detectedDuplicates = detectDuplicateFindings(bookings);
+      setDuplicateFindings(detectedDuplicates);
+
+      if (detectedAnomalies.length === 0) {
+        setFindings([]);
+        setAuditState("completed");
+        return;
+      }
+
+      const response = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ findings: detectedAnomalies.slice(0, 40) }),
+      });
+
+      if (!response.ok) {
+        setFindings(detectedAnomalies);
+        setAuditState("completed");
+        return;
+      }
+
+      const payload = (await response.json()) as {
+        explanations?: Record<string, string>;
+      };
+      const explanations = payload.explanations ?? {};
+
+      setFindings(
+        detectedAnomalies.map((finding) => ({
+          ...finding,
+          aiExplanation: explanations[finding.id],
+        })),
+      );
+
+      setAuditState("completed");
+    } catch {
+      setAuditState("error");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,oklch(0.95_0.015_220)_0%,oklch(1_0_0)_42%)] text-slate-900">
       <main className="mx-auto flex w-full max-w-[1240px] flex-col gap-7 px-4 py-8 md:px-8 md:py-12">
@@ -105,7 +150,7 @@ export function BookingInsightsClient({
             Booking Insights
           </h1>
           <Button
-            onClick={handleRunAudit}
+            onClick={runAllChecks}
             disabled={auditState === "running"}
             className="h-10 rounded-full bg-slate-950 px-5 text-xs font-semibold uppercase tracking-[0.14em] text-white shadow-sm hover:bg-slate-800 focus-visible:ring-slate-400"
           >
@@ -150,9 +195,18 @@ export function BookingInsightsClient({
               >
                 Anomalies
               </button>
-              <span className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-400">
+              <button
+                type="button"
+                onClick={() => setMainTab("duplicates")}
+                className={[
+                  "rounded-md px-3 py-1.5 text-xs font-semibold",
+                  mainTab === "duplicates"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-700 hover:bg-slate-100",
+                ].join(" ")}
+              >
                 Duplicates
-              </span>
+              </button>
               <span className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-400">
                 Booking Manual
               </span>
@@ -240,7 +294,7 @@ export function BookingInsightsClient({
                                 </div>
                               </div>
                               <p className="text-sm font-medium text-slate-800">
-                                {finding.aiExplanation ?? "AI explanation unavailable."}
+                                {finding.aiExplanation ?? finding.reason}
                               </p>
                               <p className="mt-2 text-xs text-slate-600">
                                 Document IDs: {finding.documentIds.join(", ")}
@@ -270,6 +324,94 @@ export function BookingInsightsClient({
                             </div>
                           );
                         })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mainTab === "duplicates" && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-800">
+                    Duplicates
+                  </h2>
+                  <p className="text-xs font-medium text-slate-700">
+                    {auditState === "idle" && "Run duplicate check to generate findings"}
+                    {auditState === "running" && "Detecting duplicate postings..."}
+                    {auditState === "completed" && `${duplicateFindings.length} clusters`}
+                    {auditState === "error" && "Duplicate detection failed"}
+                  </p>
+                </div>
+
+                {auditState === "idle" && (
+                  <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                    Click <span className="font-semibold">Run Audit</span> to generate duplicate clusters.
+                  </div>
+                )}
+
+                {auditState === "running" && (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                    Scanning for duplicate postings using amount, text, date gap, and account similarity...
+                  </div>
+                )}
+
+                {auditState === "completed" && duplicateFindings.length === 0 && (
+                  <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                    No duplicate clusters detected.
+                  </div>
+                )}
+
+                {auditState === "completed" && duplicateFindings.length > 0 && (
+                  <div className="space-y-4">
+                    {duplicateFindings.map((finding) => (
+                      <div
+                        key={finding.id}
+                        className="rounded-xl border border-slate-300 p-4"
+                      >
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className="border-slate-300 bg-slate-100 text-slate-800"
+                          >
+                            Duplicate Cluster
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-slate-300 bg-white text-slate-700"
+                          >
+                            Confidence {Math.round(finding.confidence * 100)}%
+                          </Badge>
+                        </div>
+                        <p className="text-sm font-medium text-slate-800">
+                          Criteria: {finding.criteria.join("; ")}
+                        </p>
+                        <p className="mt-2 text-xs text-slate-600">
+                          Document IDs: {finding.documentIds.join(", ")}
+                        </p>
+
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <div className="space-y-2">
+                            {finding.sampleRows.map((row) => (
+                              <div
+                                key={`${row.document_id}-${row.line_id}`}
+                                className="grid grid-cols-[120px_100px_1fr_130px] items-center gap-2 text-xs"
+                              >
+                                <span className="font-mono font-semibold text-slate-800">
+                                  {row.document_id}/{row.line_id}
+                                </span>
+                                <span className="text-slate-700">{formatDate(row.posting_date)}</span>
+                                <span className="truncate text-slate-800">
+                                  {row.gl_account} | {row.booking_text}
+                                </span>
+                                <span className="text-right font-semibold text-slate-900">
+                                  {formatCurrency(row.amount, "EUR")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -11938,5 +11938,35 @@
         "vendor_id":  "V-OFFICE-11",
         "customer_id":  null,
         "tax_code":  "V0"
+    },
+    {
+        "company_code":  "1000",
+        "posting_date":  "2024-11-09",
+        "document_id":  "4900000555",
+        "line_id":  1,
+        "gl_account":  "530000",
+        "cost_center":  "CC-OPS",
+        "amount":  640,
+        "currency":  "EUR",
+        "debit_credit":  "S",
+        "booking_text":  "KR Vendor Inv 900300 Utility Provider Nov/2024",
+        "vendor_id":  "V-UTIL-22",
+        "customer_id":  null,
+        "tax_code":  "V0"
+    },
+    {
+        "company_code":  "1000",
+        "posting_date":  "2024-11-09",
+        "document_id":  "4900000555",
+        "line_id":  2,
+        "gl_account":  "200000",
+        "cost_center":  "CC-OPS",
+        "amount":  -640,
+        "currency":  "EUR",
+        "debit_credit":  "H",
+        "booking_text":  "KR Vendor Inv 900300 Utility Provider Nov/2024",
+        "vendor_id":  "V-UTIL-22",
+        "customer_id":  null,
+        "tax_code":  "V0"
     }
 ]
