@@ -24,7 +24,7 @@ export const columns: ColumnDef<Booking>[] = [
     accessorKey: "posting_date",
     header: "Date",
     cell: ({ row }) => (
-      <span className="text-slate-500 font-medium whitespace-nowrap">
+      <span className="whitespace-nowrap font-medium text-slate-700">
         {formatDate(row.getValue("posting_date"))}
       </span>
     ),
@@ -33,7 +33,7 @@ export const columns: ColumnDef<Booking>[] = [
     accessorKey: "tax_code",
     header: "Tax",
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-semibold text-slate-500">
+      <span className="font-mono text-xs font-semibold text-slate-700">
         {row.getValue("tax_code")}
       </span>
     ),
@@ -42,7 +42,7 @@ export const columns: ColumnDef<Booking>[] = [
     accessorKey: "gl_account",
     header: "G/L Account",
     cell: ({ row }) => (
-      <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600 border border-slate-200">
+      <code className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
         {row.getValue("gl_account")}
       </code>
     ),
@@ -54,10 +54,10 @@ export const columns: ColumnDef<Booking>[] = [
       const booking = row.original;
       return (
         <div className="flex flex-col min-w-[200px]">
-          <span className="font-semibold text-slate-700 leading-tight">
+          <span className="font-semibold leading-tight text-slate-900">
             {booking.booking_text}
           </span>
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
             {booking.cost_center || "General"}
           </span>
         </div>
@@ -90,7 +90,7 @@ export const columns: ColumnDef<Booking>[] = [
       const booking = row.original;
       const partner = booking.vendor_id ?? booking.customer_id;
       return (
-        <span className="font-mono text-xs text-slate-500">{partner ?? "N/A"}</span>
+        <span className="font-mono text-xs text-slate-700">{partner ?? "N/A"}</span>
       );
     },
   },
@@ -108,8 +108,8 @@ export const columns: ColumnDef<Booking>[] = [
             className={cn(
               "px-2 py-0 font-bold text-[9px] uppercase tracking-widest border-none shadow-none",
               isDebit
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-slate-50 text-slate-500",
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-slate-100 text-slate-700",
             )}
           >
             {isDebit ? "Debit" : "Credit"}
