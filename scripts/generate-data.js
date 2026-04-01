@@ -3,7 +3,8 @@ const path = require("path");
 
 const START_DATE = new Date("2024-10-01");
 const DAYS = 61;
-const TARGET_TOTAL_LINES = 792;
+const TARGET_TOTAL_LINES = 796;
+const SUSPICIOUS_LINE_BUDGET = 44;
 
 const COMPANY_CODE = "1000";
 const CURRENCY = "EUR";
@@ -372,6 +373,85 @@ function addSuspiciousCases(bookings, docId) {
     }),
   );
 
+  const repeatedUtilityText = "KR Vendor Inv 900300 Utility Provider Nov/2024";
+  for (let i = 0; i < 5; i++) {
+    current += 1;
+    bookings.push(
+      ...buildDocument({
+        documentId: current,
+        postingDate: i < 3 ? "2024-11-08" : "2024-11-18",
+        text: repeatedUtilityText,
+        taxCode: "V0",
+        vendorId: "V-UTIL-22",
+        customerId: null,
+        costCenter: "CC-OPS",
+        entries: [
+          { gl: GL.UTILITIES, amount: 640 + i * 5 },
+          { gl: GL.AP, amount: -(640 + i * 5), cost_center: null },
+        ],
+      }),
+    );
+  }
+
+  current += 1;
+  bookings.push(
+    ...buildDocument({
+      documentId: current,
+      postingDate: "2024-11-19",
+      text: repeatedUtilityText,
+      taxCode: "V0",
+      vendorId: "V-UTIL-22",
+      customerId: null,
+      costCenter: "CC-OPS",
+      entries: [
+        { gl: GL.LEGAL, amount: 665.0 },
+        { gl: GL.AP, amount: -665.0, cost_center: null },
+      ],
+    }),
+  );
+
+  current += 1;
+  bookings.push(
+    ...buildDocument({
+      documentId: current,
+      postingDate: "2024-11-20",
+      text: "KR Vendor Inv 900300 Utility Provder Nov/2024",
+      taxCode: "V0",
+      vendorId: "V-UTIL-22",
+      customerId: null,
+      costCenter: "CC-OPS",
+      entries: [
+        { gl: GL.UTILITIES, amount: 668.0 },
+        { gl: GL.AP, amount: -668.0, cost_center: null },
+      ],
+    }),
+  );
+
+  const malformedDocs = [
+    { text: "TEST", amount: 222.0 },
+    { text: "123456789", amount: 333.0 },
+    { text: "XXX TEMP", amount: 444.0 },
+  ];
+
+  for (const malformed of malformedDocs) {
+    current += 1;
+    bookings.push(
+      ...buildDocument({
+        documentId: current,
+        postingDate: "2024-11-22",
+        text: malformed.text,
+        taxCode: "V0",
+        vendorId: "V-OFFICE-11",
+        customerId: null,
+        costCenter: "CC-FIN",
+        entries: [
+          { gl: GL.OFFICE, amount: malformed.amount },
+          { gl: GL.AP, amount: -malformed.amount, cost_center: null },
+        ],
+      }),
+    );
+  }
+
   return current;
 }
 
@@ -408,7 +488,7 @@ function generateData() {
   const bookings = [];
   let docId = 4900000000;
 
-  while (bookings.length < TARGET_TOTAL_LINES - 18) {
+  while (bookings.length < TARGET_TOTAL_LINES - SUSPICIOUS_LINE_BUDGET) {
     docId += 1;
     const create = pickDocFactory();
     bookings.push(...create(docId));

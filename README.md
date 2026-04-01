@@ -6,6 +6,7 @@ Mini Next.js app to analyze accounting journal entries and spot suspicious booki
 
 - Task 0: synthetic SAP-like booking data model + generator script
 - Task 1: production-style mini dashboard UI for booking exploration
+- Task 2.1: anomaly / typo / near-duplicate audit workflow (precision-first)
 
 ## Stack
 
@@ -64,25 +65,34 @@ Output file:
 - `src/lib/booking-insights.ts`: pure aggregation helpers.
 - `src/components/dashboard/columns.tsx`: explicit, typed accounting-centric table columns.
 
-## UX choices
+## Task 2.1 (Anomaly / typo / near-duplicate)
 
-- Minimal, high-contrast desktop-first layout with strong visual hierarchy.
-- Fast scan cards for lines/docs/accounts/date span.
-- Operator workflow controls on top: quick search + cost center chips.
-- Dense but readable ledger table with sortable headers and page-size control.
+- Manual trigger via `Run Audit` button
+- Deterministic local detection in `src/lib/anomaly-detection.ts`
+- Optional AI explanation overlay via `POST /api/audit`
+- Findings panel with evidence docs + table row highlighting
+
+### Azure Foundry configuration (optional)
+
+Set these env vars if you want AI explanations:
+
+```bash
+AZURE_OPENAI_ENDPOINT=...
+AZURE_OPENAI_KEY=...
+AZURE_OPENAI_API_VERSION=...
+AZURE_OPENAI_CHAT_DEPLOYMENT=...
+```
+
+Without these, the app still works with deterministic local explanations.
 
 ## Intentionally out of scope for this stage
 
 - Real backend/database
 - Authentication/authorization
 - Multi-company normalization
-- Feature logic for anomaly scoring (Task 2)
 
 ## Next steps
 
-- Implement Task 2 heuristics in isolated modules:
-  - text similarity anomaly detector
-  - duplicate booking detector
-  - rule/manual suggestion engine
-- Add unit tests around data quality and heuristic confidence scoring.
-- Add short Loom walkthrough and feature-by-feature PR history.
+- Task 2.2 duplicate booking detection
+- Task 2.3 booking manual / rule suggestions
+- Add dedicated unit + API + UI tests for Task 2.1

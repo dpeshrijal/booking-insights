@@ -25,11 +25,13 @@ import { Button } from "@/components/ui/button";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  getRowClassName?: (row: TData) => string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -48,21 +50,21 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
         <Table>
-          <TableHeader className="bg-slate-50/70">
+          <TableHeader className="bg-slate-100">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="h-12 px-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500"
+                    className="h-12 px-4 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-700"
                   >
                     {header.isPlaceholder ? null : (
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className="inline-flex items-center gap-1"
+                        className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900"
                       >
                         {flexRender(
                           header.column.columnDef.header,
@@ -84,7 +86,10 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="border-slate-100 hover:bg-slate-50/35"
+                  className={[
+                    "border-slate-200 hover:bg-slate-50",
+                    getRowClassName ? getRowClassName(row.original) : "",
+                  ].join(" ")}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-4 py-3">
@@ -100,7 +105,7 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-slate-400"
+                  className="h-24 text-center text-slate-600"
                 >
                   No records found.
                 </TableCell>
@@ -111,7 +116,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
           Page {table.getState().pagination.pageIndex + 1} of{" "}
           {table.getPageCount()} | {data.length} rows
         </p>
@@ -119,7 +124,7 @@ export function DataTable<TData, TValue>({
           <select
             value={table.getState().pagination.pageSize}
             onChange={(event) => table.setPageSize(Number(event.target.value))}
-            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600"
+            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800"
           >
             {[10, 15, 25, 50].map((size) => (
               <option key={size} value={size}>
@@ -130,7 +135,7 @@ export function DataTable<TData, TValue>({
 
           <Button
             variant="outline"
-            className="h-9 w-9 rounded-md border-slate-200 p-0 text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
+            className="h-9 w-9 rounded-md border-slate-300 p-0 text-slate-700 transition-all hover:bg-slate-900 hover:text-white"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -138,7 +143,7 @@ export function DataTable<TData, TValue>({
           </Button>
           <Button
             variant="outline"
-            className="h-9 w-9 rounded-md border-slate-200 p-0 text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
+            className="h-9 w-9 rounded-md border-slate-300 p-0 text-slate-700 transition-all hover:bg-slate-900 hover:text-white"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >

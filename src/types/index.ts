@@ -14,19 +14,26 @@ export interface Booking {
   tax_code: string;
 }
 
-export interface AuditFlag {
-  id: string;
-  type: "TYPO" | "DUPLICATE" | "ANOMALY";
-  severity: "low" | "medium" | "high";
-  documentId: string;
-  description: string;
-  evidence?: string;
+export type FindingType =
+  | "TYPO_NEAR_DUPLICATE"
+  | "UNUSUAL_ACCOUNT_COMBINATION"
+  | "OUTLIER_TEXT_PATTERN"
+  | "UNUSUAL_TEXT_PATTERN";
+
+export interface FindingSampleRow {
+  document_id: string;
+  line_id: number;
+  posting_date: string;
+  gl_account: string;
+  booking_text: string;
+  amount: number;
 }
 
-export interface BookingRule {
+export interface AuditFinding {
   id: string;
-  title: string;
-  logic: string;
-  explanation: string;
-  evidenceDocIds: string[];
+  type: FindingType;
+  reason: string;
+  documentIds: string[];
+  sampleRows: FindingSampleRow[];
+  aiExplanation?: string;
 }
