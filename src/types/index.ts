@@ -37,3 +37,11 @@ export interface AuditFinding {
   sampleRows: FindingSampleRow[];
   aiExplanation?: string;
 }
+
+export interface DuplicateFinding {
+  id: string;
+  documentIds: string[];
+  sampleRows: FindingSampleRow[];
+  confidence: number;
+  criteria: string[];
+}
