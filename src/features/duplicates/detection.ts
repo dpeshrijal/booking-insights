@@ -24,6 +24,8 @@ type DocSummary = {
   currency: string;
   bookingText: string;
   normalizedText: string;
+  normalizedLength: number;
+  bigramCounts: Map<string, number>;
   partnerId: string | null;
   primaryAccount: string;
   accountSignature: string[];
@@ -56,27 +58,32 @@ function toSampleRow(row: Booking): FindingSampleRow {
   };
 }
 
-function bigramDiceSimilarity(a: string, b: string): number {
-  if (a === b) return 1;
-  if (a.length < 2 || b.length < 2) return 0;
-
+function buildBigramCounts(text: string): Map<string, number> {
   const counts = new Map<string, number>();
-  for (let i = 0; i < a.length - 1; i++) {
-    const gram = a.slice(i, i + 2);
+  if (text.length < 2) return counts;
+  for (let i = 0; i < text.length - 1; i++) {
+    const gram = text.slice(i, i + 2);
     counts.set(gram, (counts.get(gram) ?? 0) + 1);
   }
+  return counts;
+}
+
+function bigramDiceSimilarityFromCounts(
+  left: Map<string, number>,
+  right: Map<string, number>,
+  leftLength: number,
+  rightLength: number,
+): number {
+  if (leftLength < 2 || rightLength < 2) return 0;
 
   let intersection = 0;
-  for (let i = 0; i < b.length - 1; i++) {
-    const gram = b.slice(i, i + 2);
-    const count = counts.get(gram) ?? 0;
-    if (count > 0) {
-      counts.set(gram, count - 1);
-      intersection += 1;
-    }
+  for (const [gram, leftCount] of left.entries()) {
+    const rightCount = right.get(gram);
+    if (!rightCount) continue;
+    intersection += Math.min(leftCount, rightCount);
   }
 
-  return (2 * intersection) / (a.length - 1 + (b.length - 1));
+  return (2 * intersection) / ((leftLength - 1) + (rightLength - 1));
 }
 
 function getDayDiff(left: string, right: string): number {
@@ -118,6 +125,7 @@ function summarizeByDocument(bookings: Booking[]): DocSummary[] {
     const nonClearing =
       rows.find((r) => !CLEARING_ACCOUNTS.has(r.gl_account)) ?? first;
     const partnerRow = rows.find((r) => r.vendor_id || r.customer_id) ?? first;
+    const normalizedText = normalizeText(first.booking_text);
 
     // Safety fix: totalVolume measures the absolute size of the transaction,
     // ensuring credit-only or negative-mapped docs don't result in 0
@@ -137,7 +145,9 @@ function summarizeByDocument(bookings: Booking[]): DocSummary[] {
       postingDate: first.posting_date,
       currency: first.currency,
       bookingText: first.booking_text,
-      normalizedText: normalizeText(first.booking_text),
+      normalizedText,
+      normalizedLength: normalizedText.length,
+      bigramCounts: buildBigramCounts(normalizedText),
       partnerId: partnerRow.vendor_id ?? partnerRow.customer_id ?? null,
       primaryAccount: nonClearing.gl_account,
       accountSignature,
@@ -153,9 +163,11 @@ function scorePair(left: DocSummary, right: DocSummary): PairScore | null {
   const dateGap = getDayDiff(left.postingDate, right.postingDate);
   if (dateGap > RULES.maxDateGapDays) return null;
 
-  const textSimilarity = bigramDiceSimilarity(
-    left.normalizedText,
-    right.normalizedText,
+  const textSimilarity = bigramDiceSimilarityFromCounts(
+    left.bigramCounts,
+    right.bigramCounts,
+    left.normalizedLength,
+    right.normalizedLength,
   );
 
   const overlap = accountOverlapRatio(
