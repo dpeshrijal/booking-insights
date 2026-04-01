@@ -45,3 +45,11 @@ export interface DuplicateFinding {
   confidence: number;
   criteria: string[];
 }
+
+export interface BookingRule {
+  id: string;
+  title: string;
+  check: string;
+  explanation: string;
+  evidenceRows: FindingSampleRow[];
+}

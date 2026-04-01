@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Booking, AuditFinding, DuplicateFinding, FindingType } from "@/types";
+import {
+  Booking,
+  AuditFinding,
+  BookingRule,
+  DuplicateFinding,
+  FindingType,
+} from "@/types";
 import { columns } from "@/components/dashboard/columns";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +17,7 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import type { DashboardStats } from "@/lib/booking-insights";
 import { detectAnomalyFindings } from "@/features/anomalies/detection";
 import { detectDuplicateFindings } from "@/features/duplicates/detection";
+import { generateBookingManualRules } from "@/features/booking-manual/rules";
 
 interface BookingInsightsClientProps {
   bookings: Booking[];
@@ -18,7 +25,7 @@ interface BookingInsightsClientProps {
 }
 
 type AuditState = "idle" | "running" | "completed" | "error";
-type MainTab = "ledger" | "anomalies" | "duplicates";
+type MainTab = "ledger" | "anomalies" | "duplicates" | "booking-manual";
 
 const TYPE_SECTIONS: Array<{ type: FindingType; label: string }> = [
   { type: "TYPO_NEAR_DUPLICATE", label: "Typos / Near-Duplicates" },
@@ -41,6 +48,7 @@ export function BookingInsightsClient({
   const [auditState, setAuditState] = useState<AuditState>("idle");
   const [findings, setFindings] = useState<AuditFinding[]>([]);
   const [duplicateFindings, setDuplicateFindings] = useState<DuplicateFinding[]>([]);
+  const [bookingRules, setBookingRules] = useState<BookingRule[]>([]);
   const [mainTab, setMainTab] = useState<MainTab>("ledger");
   const findingsByType = TYPE_SECTIONS.map((section) => ({
     ...section,
@@ -104,7 +112,9 @@ export function BookingInsightsClient({
       setAuditState("running");
       const detectedAnomalies = detectAnomalyFindings(bookings);
       const detectedDuplicates = detectDuplicateFindings(bookings);
+      const detectedRules = generateBookingManualRules(bookings);
       setDuplicateFindings(detectedDuplicates);
+      setBookingRules(detectedRules);
 
       if (detectedAnomalies.length === 0) {
         setFindings([]);
@@ -207,9 +217,18 @@ export function BookingInsightsClient({
               >
                 Duplicates
               </button>
-              <span className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-400">
+              <button
+                type="button"
+                onClick={() => setMainTab("booking-manual")}
+                className={[
+                  "rounded-md px-3 py-1.5 text-xs font-semibold",
+                  mainTab === "booking-manual"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-700 hover:bg-slate-100",
+                ].join(" ")}
+              >
                 Booking Manual
-              </span>
+              </button>
             </div>
           </div>
 
@@ -394,6 +413,74 @@ export function BookingInsightsClient({
                         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                           <div className="space-y-2">
                             {finding.sampleRows.map((row) => (
+                              <div
+                                key={`${row.document_id}-${row.line_id}`}
+                                className="grid grid-cols-[120px_100px_1fr_130px] items-center gap-2 text-xs"
+                              >
+                                <span className="font-mono font-semibold text-slate-800">
+                                  {row.document_id}/{row.line_id}
+                                </span>
+                                <span className="text-slate-700">{formatDate(row.posting_date)}</span>
+                                <span className="truncate text-slate-800">
+                                  {row.gl_account} | {row.booking_text}
+                                </span>
+                                <span className="text-right font-semibold text-slate-900">
+                                  {formatCurrency(row.amount, "EUR")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mainTab === "booking-manual" && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-800">
+                    Booking Manual
+                  </h2>
+                  <p className="text-xs font-medium text-slate-700">
+                    {auditState === "idle" && "Run audit to generate rule suggestions"}
+                    {auditState === "running" && "Generating booking rules..."}
+                    {auditState === "completed" && `${bookingRules.length} rules`}
+                    {auditState === "error" && "Rule generation failed"}
+                  </p>
+                </div>
+
+                {auditState === "idle" && (
+                  <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                    Click <span className="font-semibold">Run Audit</span> to generate booking rules.
+                  </div>
+                )}
+
+                {auditState === "running" && (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                    Building a booking manual from recurring posting patterns...
+                  </div>
+                )}
+
+                {auditState === "completed" && bookingRules.length === 0 && (
+                  <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                    No strong rules found from the current dataset.
+                  </div>
+                )}
+
+                {auditState === "completed" && bookingRules.length > 0 && (
+                  <div className="space-y-4">
+                    {bookingRules.map((rule) => (
+                      <div key={rule.id} className="rounded-xl border border-slate-300 p-4">
+                        <h3 className="text-sm font-semibold text-slate-900">{rule.title}</h3>
+                        <p className="mt-1 text-sm text-slate-700">{rule.check}</p>
+                        <p className="mt-2 text-xs text-slate-600">{rule.explanation}</p>
+
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <div className="space-y-2">
+                            {rule.evidenceRows.map((row) => (
                               <div
                                 key={`${row.document_id}-${row.line_id}`}
                                 className="grid grid-cols-[120px_100px_1fr_130px] items-center gap-2 text-xs"
