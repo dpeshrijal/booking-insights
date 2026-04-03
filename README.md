@@ -31,8 +31,8 @@
 
 **PRs/commits implementing 2 fixes**
 
-1. `perf(duplicates): memoize normalized text + bigram counts` (commit/PR id: fill before submit)
-2. `test: add vitest coverage for anomalies, duplicates, booking manual` (commit/PR id: fill before submit)
+1. `perf(duplicates): memoize normalized text + bigram counts` 
+2. `test: add vitest coverage for anomalies, duplicates, booking manual`
 
 ## Task 3 (Context engineering / knowledge graph sketch)
 
